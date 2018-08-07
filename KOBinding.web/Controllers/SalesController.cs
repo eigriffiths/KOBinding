@@ -41,10 +41,9 @@ namespace KOBinding.web.Controllers
                 return HttpNotFound();
             }
 
-            SalesOrderViewModel salesOrderViewModel = new SalesOrderViewModel();
-            salesOrderViewModel.SalesOrderId = salesOrder.SalesOrderId;
-            salesOrderViewModel.CustomerName = salesOrder.CustomerName;
-            salesOrderViewModel.PoNumber = salesOrder.PoNumber;
+            SalesOrderViewModel salesOrderViewModel =
+                ViewModels.Helpers.CreateSalesOrderViewModelFromSalesOrder(salesOrder);
+
             salesOrderViewModel.MessageToClient = "I originated from the viewmodel, rather than the model";
 
             return View(salesOrderViewModel);
@@ -93,7 +92,13 @@ namespace KOBinding.web.Controllers
             {
                 return HttpNotFound();
             }
-            return View(salesOrder);
+
+            SalesOrderViewModel salesOrderViewModel =
+                ViewModels.Helpers.CreateSalesOrderViewModelFromSalesOrder(salesOrder);
+            salesOrderViewModel.MessageToClient = string.Format("You are about to permanently delete this sales order.");
+            salesOrderViewModel.ObjectState = ObjectState.Deleted;
+
+            return View(salesOrderViewModel);
         }
 
 
@@ -109,26 +114,18 @@ namespace KOBinding.web.Controllers
 
         public JsonResult Save(SalesOrderViewModel salesOrderViewModel)
         {
-            SalesOrder salesOrder = new SalesOrder();
-            salesOrder.SalesOrderId = salesOrderViewModel.SalesOrderId;
-            salesOrder.CustomerName = salesOrderViewModel.CustomerName;
-            salesOrder.PoNumber = salesOrderViewModel.PoNumber;
+            SalesOrder salesOrder = ViewModels.Helpers.CreateSalesOrderFromSalesOrderViewModel(salesOrderViewModel);
             salesOrder.ObjectState = salesOrderViewModel.ObjectState;
 
-            _salesContext.SalesOrders.Add(salesOrder);
-            _salesContext.ChangeTracker.Entries<IObjectWithState>().Single().State = Helpers.ConvertState(salesOrder.ObjectState);
+            _salesContext.SalesOrders.Attach(salesOrder);
+            _salesContext.ChangeTracker.Entries<IObjectWithState>().Single().State = DataLayer.Helpers.ConvertState(salesOrder.ObjectState);
             _salesContext.SaveChanges();
 
-            switch (salesOrderViewModel.ObjectState)
-            {
-                case ObjectState.Added:
-                    salesOrderViewModel.MessageToClient = string.Format("A sales order for {0} has been added to the database.", salesOrder.CustomerName);
-                    break;
+            if (salesOrder.ObjectState == ObjectState.Deleted)
+                return Json(new {newLocation = "/Sales/Index/"});
 
-                case ObjectState.Modified:
-                    salesOrderViewModel.MessageToClient = string.Format("The customer name for this sales order has been updated to {0} in the database.", salesOrder.CustomerName);
-                    break;
-            }
+            salesOrderViewModel.MessageToClient =
+                ViewModels.Helpers.GetMessageToClient(salesOrderViewModel.ObjectState, salesOrder.CustomerName);
 
             salesOrderViewModel.SalesOrderId = salesOrder.SalesOrderId;
             salesOrderViewModel.ObjectState = ObjectState.Unchanged;

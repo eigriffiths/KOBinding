@@ -19,6 +19,9 @@ SalesORderViewModel = function (data) {
                 success: function(data) {
                     if (data.salesOrderViewModel != null)
                         ko.mapping.fromJS(data.salesOrderViewModel, {}, self);
+
+                    if (data.newLocation != null)
+                        window.locaiton = data.newLocation;
                 }
             });
         },
