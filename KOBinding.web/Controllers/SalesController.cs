@@ -53,7 +53,8 @@ namespace KOBinding.web.Controllers
         // GET: Sales/Create
         public ActionResult Create()
         {
-            return View();
+            SalesOrderViewModel salesOrderViewModel = new SalesOrderViewModel();
+            return View(salesOrderViewModel);
         }
 
 
@@ -97,5 +98,20 @@ namespace KOBinding.web.Controllers
             }
             base.Dispose(disposing);
         }
+
+        public JsonResult Save(SalesOrderViewModel salesOrderViewModel)
+        {
+            SalesOrder salesOrder = new SalesOrder();
+            salesOrder.CustomerName = salesOrderViewModel.CustomerName;
+            salesOrder.PoNumber = salesOrderViewModel.PoNumber;
+
+            _salesContext.SalesOrders.Add(salesOrder);
+            _salesContext.SaveChanges();
+
+            salesOrderViewModel.MessageToClient = string.Format("Success! {0}'s order has been added to the database", salesOrder.CustomerName);
+
+            return Json(new {salesOrderViewModel});
+        }
+
     }
 }
